@@ -55,7 +55,6 @@ def update_user():
     phone = request.form['phone']
 
     return module_update_user(username, password, email, phone)
-    pass
 
 @app.route('/api/instameet/update_location/', methods=['POST'])
 def update_location():
@@ -72,6 +71,22 @@ def update_location():
     location = request.form['location']
 
     return module_update_location(username, password, location)
+
+@app.route('/api/instameet/toggle_discovery/', method=['POST'])
+def toggle_discovery():
+    if 'username' not in request.form or 'password' not in request.form or 'discover' not in request.form:
+        return jsonify({
+                        'page': 'get_user',
+                        'code': 400,
+                        'message':'Bad Request. Insufficiant parameters.',
+                        'status': 'FAILED'
+                        })
+
+    username = request.form['username']
+    password = request.form['password']
+    location = request.form['discover']
+
+    return module_toggle_discovery(username, password, discover)
 
 def module_get_user(username):
     users = _db.users
@@ -182,6 +197,39 @@ def module_update_location(username, password, location):
         {
             "$set":{
                 "location": location,
+            },
+            "$currentDate": {"lastModified": True}
+        }
+    )
+    return jsonify({
+        'code' : 200,
+        'records_matched': result.matched_count,
+        'records_updated': result.modified_count,
+        'status': 'SUCCESS',
+        'message': 'Successfully updated %d records'%result.modified_count
+    })
+
+def module_toggle_discovery(username, password, discover):
+    user_details = module_get_user(username)
+    if json.loads(user_details.get_data())['status'] == "FAILED":
+        return jsonify({
+            'code': 400,
+            'status': 'FAILED',
+            'message': 'Error finding user'
+        })
+    else:
+        if password != json.loads(user_details.get_data())['user']['password']:
+            return jsonify({
+                'code': 500,
+                'status': 'FORBIDDEN',
+                'message': 'Invalid password'
+            })
+
+    result = _db.users.update_one(
+        {'username': username},
+        {
+            "$set":{
+                "discover": discover,
             },
             "$currentDate": {"lastModified": True}
         }
