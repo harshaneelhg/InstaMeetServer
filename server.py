@@ -105,6 +105,20 @@ def add_history():
 
     return module_add_history(username, password, user1, user2)
 
+@app.route('/api/instameet/get_history/', methods=["POST"])
+def get_history():
+    if 'username' not in request.form or 'password' not in request.form:
+        return jsonify({
+                        'page': 'get_history',
+                        'code': 400,
+                        'message':'Bad Request. Insufficiant parameters.',
+                        'status': 'FAILED'
+                        })
+    username = request.form['username']
+    password = request.form['password']
+
+    return module_get_history(username, password)
+
 def module_get_user(username):
     users = _db.users
     ret_user = users.find_one({'username': username})
@@ -310,6 +324,37 @@ def module_add_history(username, password, user1, user2):
         'message': 'Added to the history',
         'status': 'SUCCESS'
     })
+
+def module_get_history(username, password):
+    user_details = module_get_user(username)
+    if json.loads(user_details.get_data())['status'] == "FAILED":
+        return jsonify({
+            'page': 'toggle_discovery',
+            'code': 400,
+            'status': 'FAILED',
+            'message': 'Error finding user'
+        })
+    else:
+        if password != json.loads(user_details.get_data())['user']['password']:
+            return jsonify({
+                'page': 'toggle_discovery',
+                'code': 500,
+                'status': 'FORBIDDEN',
+                'message': 'Invalid password'
+            })
+
+    user_history = _db.user_history
+    ret_history = user_history.find({"$or":[{'user1': username},{'user2':username}]})
+    user_list = [u for u in ret_history]
+    for u in user_list:
+        oid = u.pop('_id')
+        u['pk_history'] = str(oid)
+
+    return jsonify({'page': 'get_history',
+                    'code': 200,
+                    'message': 'Returning history.' if len(user_list) != 0 else 'No history found.',
+                    'history': user_list,
+                    'status': 'SUCCESS'})
 
 if __name__ == '__main__':
     app.run(debug=True,port=8001)
