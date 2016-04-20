@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, request
 from pymongo import MongoClient
+from datetime import datetime
 import math
 
 import json
@@ -40,7 +41,7 @@ def register_user():
 
 @app.route('/api/instameet/update_user/', methods=['POST'])
 def update_user():
-    if 'username' not in request.form or 'password' not in request.form or 'email' not in request.form or 'phone' not in request.form:
+    if 'username' not in request.form or 'password' not in request.form or 'email' not in request.form or 'phone' not in request.form or 'display_name' not in request.form or 'discover' not in request.form:
         return jsonify({
                         'page': 'get_user',
                         'code': 400,
@@ -52,9 +53,10 @@ def update_user():
     password = request.form['password']
     email = request.form['email']
     phone = request.form['phone']
+    display_name = request.form['display_name']
+    discover = request.form['discover']
 
-    return module_update_user(username, password, email, phone)
-    pass
+    return module_update_user(username, password, email, phone, display_name, discover)
 
 @app.route('/api/instameet/update_location/', methods=['POST'])
 def update_location():
@@ -135,6 +137,52 @@ def get_nearby():
         })
     pass
 
+@app.route('/api/instameet/toggle_discovery/', methods=['POST'])
+def toggle_discovery():
+    if 'username' not in request.form or 'password' not in request.form or 'discover' not in request.form:
+        return jsonify({
+                        'page': 'toggle_discovery',
+                        'code': 400,
+                        'message':'Bad Request. Insufficiant parameters.',
+                        'status': 'FAILED'
+                        })
+
+    username = request.form['username']
+    password = request.form['password']
+    discover = request.form['discover']
+
+    return module_toggle_discovery(username, password, discover)
+
+@app.route('/api/instameet/add_history/', methods=["POST"])
+def add_history():
+    if 'username' not in request.form or 'password' not in request.form or 'user1' not in request.form or 'user2' not in request.form:
+        return jsonify({
+                        'page': 'add_history',
+                        'code': 400,
+                        'message':'Bad Request. Insufficiant parameters.',
+                        'status': 'FAILED'
+                        })
+    username = request.form['username']
+    password = request.form['password']
+    user1 = request.form['user1']
+    user2 = request.form['user2']
+
+    return module_add_history(username, password, user1, user2)
+
+@app.route('/api/instameet/get_history/', methods=["POST"])
+def get_history():
+    if 'username' not in request.form or 'password' not in request.form:
+        return jsonify({
+                        'page': 'get_history',
+                        'code': 400,
+                        'message':'Bad Request. Insufficiant parameters.',
+                        'status': 'FAILED'
+                        })
+    username = request.form['username']
+    password = request.form['password']
+
+    return module_get_history(username, password)
+
 def module_get_user(username):
     users = _db.users
     ret_user = users.find_one({'username': username})
@@ -192,7 +240,7 @@ def module_create_user(username, password, display_name):
         'status': 'SUCCESS'
     })
 
-def module_update_user(username, password, email, phone):
+def module_update_user(username, password, email, phone, display_name, discover):
     user_details = module_get_user(username)
     if json.loads(user_details.get_data())['status'] == "FAILED":
         return jsonify({
@@ -213,6 +261,8 @@ def module_update_user(username, password, email, phone):
             "$set":{
                 "email": email,
                 "phone": phone,
+                "display_name": display_name,
+                "discover": discover
             },
             "$currentDate": {"lastModified": True}
         }
@@ -316,7 +366,7 @@ def get_nearby_users(username, password):
         long1 = location1.split(',')[1].strip()
     users = _db.users.find({})
     for user in users:
-        if str(user['username']) != username:
+        if str(user['username']) != username and user['discover'] == "True":
             location2 = user['location']
             lat2,long2 = 0.0,0.0
             if location2 != "":
@@ -327,6 +377,117 @@ def get_nearby_users(username, password):
                 user['distance'] = dist
                 near_users.append(user)
     return near_users
+
+def module_toggle_discovery(username, password, discover):
+    user_details = module_get_user(username)
+    if json.loads(user_details.get_data())['status'] == "FAILED":
+        return jsonify({
+            'page': 'toggle_discovery',
+            'code': 400,
+            'status': 'FAILED',
+            'message': 'Error finding user'
+        })
+    else:
+        if password != json.loads(user_details.get_data())['user']['password']:
+            return jsonify({
+                'page': 'toggle_discovery',
+                'code': 500,
+                'status': 'FORBIDDEN',
+                'message': 'Invalid password'
+            })
+
+    result = _db.users.update_one(
+        {'username': username},
+        {
+            "$set":{
+                "discover": discover,
+            },
+            "$currentDate": {"lastModified": True}
+        }
+    )
+    return jsonify({
+        'page': 'toggle_discovery',
+        'code' : 200,
+        'records_matched': result.matched_count,
+        'records_updated': result.modified_count,
+        'status': 'SUCCESS',
+        'message': 'Successfully updated %d records'%result.modified_count
+    })
+
+def module_add_history(username, password, user1, user2):
+    user1_details = module_get_user(user1)
+    user2_details = module_get_user(user2)
+    if json.loads(user1_details.get_data())['status'] == "FAILED":
+        return jsonify({
+            'page': 'add_history',
+            'code': 400,
+            'status': 'FAILED',
+            'message': 'Error finding user'
+        })
+    elif json.loads(user2_details.get_data())['status'] == "FAILED":
+        return jsonify({
+            'page': 'add_history',
+            'code': 400,
+            'status': 'FAILED',
+            'message': 'Error finding user'
+        })
+    else:
+        if password != json.loads(user2_details.get_data())['user']['password']:
+            return jsonify({
+                'page': 'add_history',
+                'code': 500,
+                'status': 'FORBIDDEN',
+                'message': 'Invalid password'
+            })
+
+    new_history ={
+        'user1': user1,
+        'user2': user2,
+        'timestamp': str(datetime.now())
+    }
+
+    user_history = _db.user_history
+    hist_id = user_history.insert_one(new_history).inserted_id
+
+    return jsonify({
+        'page': 'add_history',
+        'page': 'register',
+        'code': 200,
+        'message': 'Added to the history',
+        'status': 'SUCCESS'
+    })
+
+def module_get_history(username, password):
+    user_details = module_get_user(username)
+    if json.loads(user_details.get_data())['status'] == "FAILED":
+        return jsonify({
+            'page': 'toggle_discovery',
+            'code': 400,
+            'status': 'FAILED',
+            'message': 'Error finding user'
+        })
+    else:
+        if password != json.loads(user_details.get_data())['user']['password']:
+            return jsonify({
+                'page': 'toggle_discovery',
+                'code': 500,
+                'status': 'FORBIDDEN',
+                'message': 'Invalid password'
+            })
+
+    user_history = _db.user_history
+    ret_history = user_history.find({"$or":[{'user1': username},{'user2':username}]})
+    user_list = [u for u in ret_history]
+    for u in user_list:
+        oid = u.pop('_id')
+        u['pk_history'] = str(oid)
+
+    return jsonify({'page': 'get_history',
+                    'code': 200,
+                    'message': 'Returning history.' if len(user_list) != 0 else 'No history found.',
+                    'history': user_list,
+                    'status': 'SUCCESS'})
+
 
 def get_distance(latitude1, latitude2, longitude1, longitude2):
     lat1 = math.radians(float(latitude1))
