@@ -41,7 +41,7 @@ def register_user():
 
 @app.route('/api/instameet/update_user/', methods=['POST'])
 def update_user():
-    if 'username' not in request.form or 'password' not in request.form or 'email' not in request.form or 'phone' not in request.form or 'display_name' not in request.form or 'discover' not in request.form:
+    if 'username' not in request.form or 'password' not in request.form or 'new_password' not in request.form or 'email' not in request.form or 'phone' not in request.form or 'display_name' not in request.form or 'discover' not in request.form or 'location_sharing' not in request.form:
         return jsonify({
                         'page': 'get_user',
                         'code': 400,
@@ -51,12 +51,14 @@ def update_user():
 
     username = request.form['username']
     password = request.form['password']
+    new_password = request.form['new_password']
     email = request.form['email']
     phone = request.form['phone']
     display_name = request.form['display_name']
     discover = request.form['discover']
+    location_sharing = request.form['location_sharing']
 
-    return module_update_user(username, password, email, phone, display_name, discover)
+    return module_update_user(username, password, new_password, email, phone, display_name, discover, location_sharing)
 
 @app.route('/api/instameet/update_location/', methods=['POST'])
 def update_location():
@@ -135,7 +137,6 @@ def get_nearby():
             'near_users': [s[0] for s in scores],
             'status': 'SUCCESS'
         })
-    pass
 
 @app.route('/api/instameet/toggle_discovery/', methods=['POST'])
 def toggle_discovery():
@@ -183,6 +184,21 @@ def get_history():
 
     return module_get_history(username, password)
 
+@app.route('/api/instameet/send_request/', methods=['POST'])
+def send_request():
+    if 'user1' not in request.form or 'user2' not in request.form or 'password' not in request.form:
+        return jsonify({
+                        'page': 'get_history',
+                        'code': 400,
+                        'message':'Bad Request. Insufficiant parameters.',
+                        'status': 'FAILED'
+                        })
+    user1 = request.form['user1']
+    password = request.form['password']
+    user2 = request.form['user2']
+
+    return module_send_request(user1, password, user2)
+
 def module_get_user(username):
     users = _db.users
     ret_user = users.find_one({'username': username})
@@ -221,6 +237,7 @@ def module_create_user(username, password, display_name):
         'phone': '',
         'location': '',
         'discover': 'True',
+        'location_sharing': 'True',
         'interests': [0,0,0,0,0,0,0,0,0,0]
     }
     users = _db.users
@@ -240,7 +257,7 @@ def module_create_user(username, password, display_name):
         'status': 'SUCCESS'
     })
 
-def module_update_user(username, password, email, phone, display_name, discover):
+def module_update_user(username, password, new_password, email, phone, display_name, discover, location_sharing):
     user_details = module_get_user(username)
     if json.loads(user_details.get_data())['status'] == "FAILED":
         return jsonify({
@@ -259,10 +276,12 @@ def module_update_user(username, password, email, phone, display_name, discover)
         {'username': username},
         {
             "$set":{
+                "password": new_password,
                 "email": email,
                 "phone": phone,
                 "display_name": display_name,
-                "discover": discover
+                "discover": discover,
+                "location_sharing": location_sharing
             },
             "$currentDate": {"lastModified": True}
         }
@@ -374,7 +393,11 @@ def get_nearby_users(username, password):
                 long2 = location2.split(',')[1].strip()
             dist = get_distance(lat1,lat2,long1,long2)
             if dist < 100000:
-                user['distance'] = dist
+                user.pop('password')
+                if user['location_sharing'] != "True":
+                    user.pop("location")
+                else:
+                    user['distance'] = dist
                 near_users.append(user)
     return near_users
 
@@ -487,6 +510,43 @@ def module_get_history(username, password):
                     'message': 'Returning history.' if len(user_list) != 0 else 'No history found.',
                     'history': user_list,
                     'status': 'SUCCESS'})
+
+def module_send_request(user1, password, user2):
+    user_details = module_get_user(user1)
+    if json.loads(user_details.get_data())['status'] == "FAILED":
+        return jsonify({
+            'page': 'toggle_discovery',
+            'code': 400,
+            'status': 'FAILED',
+            'message': 'Error finding user'
+        })
+    else:
+        if password != json.loads(user_details.get_data())['user']['password']:
+            return jsonify({
+                'page': 'toggle_discovery',
+                'code': 500,
+                'status': 'FORBIDDEN',
+                'message': 'Invalid password'
+            })
+    meeting_requests = _db.requests
+    dup_request = meeting_requests.find({'user1':user1, 'user2':user2})
+    #import pdb; pdb.set_trace()
+    if dup_request.count() == 0:
+        meeting_requests.insert_one({'user1':user1, 'user2':user2})
+        return jsonify({
+            'page': 'send_request',
+            'code': 200,
+            'status': 'SUCCESS',
+            'message': 'Request sent successfully..'
+        })
+    else:
+        return jsonify({
+            'page': 'send_request',
+            'code': 200,
+            'status': 'DUPLICATE_REQUEST',
+            'message': 'Request already exists..'
+        })
+
 
 
 def get_distance(latitude1, latitude2, longitude1, longitude2):
