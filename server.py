@@ -199,6 +199,20 @@ def send_request():
 
     return module_send_request(user1, password, user2)
 
+@app.route('/api/instameet/check_request_update/', methods=['POST'])
+def check_request_update():
+    if 'username' not in request.form or 'password' not in request.form:
+        return jsonify({
+                        'page': 'get_history',
+                        'code': 400,
+                        'message':'Bad Request. Insufficiant parameters.',
+                        'status': 'FAILED'
+                        })
+    user = request.form['username']
+    password = request.form['password']
+    
+    return module_check_request_update(username, password)
+
 def module_get_user(username):
     users = _db.users
     ret_user = users.find_one({'username': username})
@@ -539,14 +553,58 @@ def module_send_request(user1, password, user2):
             'status': 'SUCCESS',
             'message': 'Request sent successfully..'
         })
-    else:
+    return jsonify({
+        'page': 'send_request',
+        'code': 200,
+        'status': 'DUPLICATE_REQUEST',
+        'message': 'Request already exists..'
+    })
+
+def module_check_request_update(username, password):
+    user_details = module_get_user(username)
+    if json.loads(user_details.get_data())['status'] == "FAILED":
         return jsonify({
-            'page': 'send_request',
+            'page': 'toggle_discovery',
+            'code': 400,
+            'status': 'FAILED',
+            'message': 'Error finding user'
+        })
+    else:
+        if password != json.loads(user_details.get_data())['user']['password']:
+            return jsonify({
+                'page': 'toggle_discovery',
+                'code': 500,
+                'status': 'FORBIDDEN',
+                'message': 'Invalid password'
+            })
+
+    meeting_requests = _db.requests
+    pending_requests = meeting_requests.find({'user2': username})
+    if pending_requests.count() == 0:
+        return jsonify({
+            'page': 'check_request_update',
             'code': 200,
-            'status': 'DUPLICATE_REQUEST',
-            'message': 'Request already exists..'
+            'status': 'NO_NEW_REQUESTS',
+            'message': 'No new requests found...'
         })
 
+    request_list = []
+    for request in pending_requests
+        request_user_details = module_get_user(request['user1'])
+        request_user = json.loads(request_user_details.get_data())['user']
+        request_user.pop('password')
+        if user['location_sharing'] != "True":
+            user.pop("location")
+
+        request_list.append(request_user)
+
+    return jsonify({
+        'page': 'check_request_update',
+        'code': 200,
+        'status': 'SUCCESS',
+        'message': 'Requests found...',
+        'request_list': request_list
+    })
 
 
 def get_distance(latitude1, latitude2, longitude1, longitude2):
