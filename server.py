@@ -210,7 +210,7 @@ def check_request_update():
                         })
     user = request.form['username']
     password = request.form['password']
-    
+
     return module_check_request_update(username, password)
 
 def module_get_user(username):
@@ -589,7 +589,7 @@ def module_check_request_update(username, password):
         })
 
     request_list = []
-    for request in pending_requests
+    for request in pending_requests:
         request_user_details = module_get_user(request['user1'])
         request_user = json.loads(request_user_details.get_data())['user']
         request_user.pop('password')
