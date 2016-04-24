@@ -595,7 +595,7 @@ def module_check_request_update(username, password):
         request_user_details = module_get_user(request['user1'])
         request_user = json.loads(request_user_details.get_data())['user']
         request_user.pop('password')
-        if user['location_sharing'] != "True":
+        if request_user['location_sharing'] != "True":
             user.pop("location")
 
         request_list.append(request_user)
