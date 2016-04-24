@@ -217,7 +217,7 @@ def check_request_update():
 
 @app.route('/api/instameet/update_request/',methods=['POST'])
 def update_request():
-    if 'user1' not in request.form or 'user1' not in request.form or 'password' not in request.form:
+    if 'user1' not in request.form or 'user1' not in request.form or 'password' not in request.form or 'status' not in request.form:
         return jsonify({
                         'page': 'get_history',
                         'code': 400,
@@ -227,8 +227,9 @@ def update_request():
     user1 = request.form['user1']
     user2 = request.form['user2']
     password = request.form['password']
+    status = request.form['status']
 
-    return module_update_request(user1, user2, password)
+    return module_update_request(user1, user2, password, status)
 
 
 def module_get_user(username):
@@ -625,7 +626,7 @@ def module_check_request_update(username, password):
         'request_list': request_list
     })
 
-def module_update_request(user1,user2,password):
+def module_update_request(user1,user2,password,status):
     user_details = module_get_user(user2)
     if json.loads(user_details.get_data())['status'] == "FAILED":
         return jsonify({
