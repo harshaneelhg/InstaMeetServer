@@ -548,7 +548,7 @@ def module_send_request(user1, password, user2):
     dup_request = meeting_requests.find({'user1':user1, 'user2':user2})
     #import pdb; pdb.set_trace()
     if dup_request.count() == 0:
-        meeting_requests.insert_one({'user1':user1, 'user2':user2})
+        meeting_requests.insert_one({'user1':user1, 'user2':user2, 'status': 'PENDING'})
         return jsonify({
             'page': 'send_request',
             'code': 200,
@@ -595,8 +595,10 @@ def module_check_request_update(username, password):
         request_user_details = module_get_user(request['user1'])
         request_user = json.loads(request_user_details.get_data())['user']
         request_user.pop('password')
+        pk = str(request['_id'])
+        request_user['pk_request'] = pk
         if request_user['location_sharing'] != "True":
-            user.pop("location")
+            request_user.pop("location")
 
         request_list.append(request_user)
 
