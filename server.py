@@ -9,9 +9,11 @@ app = Flask(__name__)
 _mongo_client = MongoClient('localhost', 8000)
 _db = _mongo_client.instameet
 
-@app.route('/', methods=['GET'])
+@app.route('/', methods=['GET','POST'])
 def index():
-    return jsonify({'page': 'index', 'status': 200})
+    return jsonify({'page': 'index',
+                    'status': 200,
+                    'message': 'Thank you for accessing InstaMeet API. You are currently viewing home page of the API.'})
 
 @app.route('/api/instameet/get_user/', methods=['POST'])
 def get_user():
@@ -208,7 +210,7 @@ def check_request_update():
                         'message':'Bad Request. Insufficiant parameters.',
                         'status': 'FAILED'
                         })
-    user = request.form['username']
+    username = request.form['username']
     password = request.form['password']
 
     return module_check_request_update(username, password)
