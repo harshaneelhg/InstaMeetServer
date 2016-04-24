@@ -653,14 +653,16 @@ def module_update_request(user1,user2,password,status):
             "$currentDate": {"lastModified": True}
         }
     )
-    return jsonify({
-        'page': 'update_requests',
-        'code' : 200,
-        'records_matched': result.matched_count,
-        'records_updated': result.modified_count,
-        'status': 'SUCCESS',
-        'message': 'Successfully found %d records, updated %d records.'%(result.matched_count,result.modified_count)
-    })
+    if status == "ACCEPTED" and result.modified_count >0:
+        update_history_response = module_add_history(user2, password, user1, user2)
+        return jsonify({
+            'page': 'update_requests',
+            'code' : 200,
+            'records_matched': result.matched_count,
+            'records_updated': result.modified_count,
+            'status': 'SUCCESS',
+            'message': 'Successfully found %d records, updated %d records.'%(result.matched_count,result.modified_count)
+        })
 
 
 def get_distance(latitude1, latitude2, longitude1, longitude2):
