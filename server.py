@@ -215,6 +215,22 @@ def check_request_update():
 
     return module_check_request_update(username, password)
 
+@app.route('/api/instameet/update_request/',methods=['POST'])
+def update_request():
+    if 'user1' not in request.form or 'user1' not in request.form or 'password' not in request.form:
+        return jsonify({
+                        'page': 'get_history',
+                        'code': 400,
+                        'message':'Bad Request. Insufficiant parameters.',
+                        'status': 'FAILED'
+                        })
+    user1 = request.form['user1']
+    user2 = request.form['user2']
+    password = request.form['password']
+
+    return module_update_request(user1, user2, password)
+
+
 def module_get_user(username):
     users = _db.users
     ret_user = users.find_one({'username': username})
@@ -450,7 +466,7 @@ def module_toggle_discovery(username, password, discover):
         'records_matched': result.matched_count,
         'records_updated': result.modified_count,
         'status': 'SUCCESS',
-        'message': 'Successfully updated %d records'%result.modified_count
+        'message': 'Successfully found %d records, updated %d records.'%(result.matched_count,result.modified_count)
     })
 
 def module_add_history(username, password, user1, user2):
@@ -545,8 +561,7 @@ def module_send_request(user1, password, user2):
                 'message': 'Invalid password'
             })
     meeting_requests = _db.requests
-    dup_request = meeting_requests.find({'user1':user1, 'user2':user2})
-    #import pdb; pdb.set_trace()
+    dup_request = meeting_requests.find({'user1':user1, 'user2':user2, 'status':'PENDING'})
     if dup_request.count() == 0:
         meeting_requests.insert_one({'user1':user1, 'user2':user2, 'status': 'PENDING'})
         return jsonify({
@@ -581,7 +596,7 @@ def module_check_request_update(username, password):
             })
 
     meeting_requests = _db.requests
-    pending_requests = meeting_requests.find({'user2': username})
+    pending_requests = meeting_requests.find({'user2': username, 'status':'PENDING'})
     if pending_requests.count() == 0:
         return jsonify({
             'page': 'check_request_update',
@@ -608,6 +623,42 @@ def module_check_request_update(username, password):
         'status': 'SUCCESS',
         'message': 'Requests found...',
         'request_list': request_list
+    })
+
+def module_update_request(user1,user2,password):
+    user_details = module_get_user(user2)
+    if json.loads(user_details.get_data())['status'] == "FAILED":
+        return jsonify({
+            'page': 'toggle_discovery',
+            'code': 400,
+            'status': 'FAILED',
+            'message': 'Error finding user'
+        })
+    else:
+        if password != json.loads(user_details.get_data())['user']['password']:
+            return jsonify({
+                'page': 'toggle_discovery',
+                'code': 500,
+                'status': 'FORBIDDEN',
+                'message': 'Invalid password'
+            })
+
+    result = _db.requests.update_one(
+        {'user1': user1, 'user2': user2},
+        {
+            "$set":{
+                "status": status,
+            },
+            "$currentDate": {"lastModified": True}
+        }
+    )
+    return jsonify({
+        'page': 'update_requests',
+        'code' : 200,
+        'records_matched': result.matched_count,
+        'records_updated': result.modified_count,
+        'status': 'SUCCESS',
+        'message': 'Successfully found %d records, updated %d records.'%(result.matched_count,result.modified_count)
     })
 
 
