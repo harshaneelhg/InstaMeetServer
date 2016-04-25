@@ -231,7 +231,7 @@ def update_request():
 
     return module_update_request(user1, user2, password, status)
 
-@app.route('/api/instameet/login/', methods=["POST"]):
+@app.route('/api/instameet/login/', methods=["POST"])
 def login():
     if 'username' not in request.form or 'password' not in request.form:
         return jsonify({
