@@ -452,16 +452,16 @@ def get_nearby_users(username, password):
     location1 = json.loads(user_details.get_data())['user']['location']
     lat1,long1 = 0.0,0.0
     if location1 != "":
-        lat1 = location1.split(',')[0].strip()
-        long1 = location1.split(',')[1].strip()
+        lat1 = location1.split(' ')[0].strip()
+        long1 = location1.split(' ')[1].strip()
     users = _db.users.find({})
     for user in users:
         if str(user['username']) != username and user['discover'] == "True":
             location2 = user['location']
             lat2,long2 = 0.0,0.0
             if location2 != "":
-                lat2 = location2.split(',')[0].strip()
-                long2 = location2.split(',')[1].strip()
+                lat2 = location2.split(' ')[0].strip()
+                long2 = location2.split(' ')[1].strip()
             dist = get_distance(lat1,lat2,long1,long2)
             if dist < 100000:
                 user.pop('password')
