@@ -118,7 +118,7 @@ def get_nearby():
 
     username = request.form['username']
     password = request.form['password']
-    reply = get_nearby_users("Mac","abcd")
+    reply = get_nearby_users(username,password)
     if type(reply) != type([]):
         return reply
 
