@@ -231,6 +231,44 @@ def update_request():
 
     return module_update_request(user1, user2, password, status)
 
+@app.route('/api/instameet/login/', methods=["POST"]):
+def login():
+    if 'username' not in request.form or 'password' not in request.form:
+        return jsonify({
+                        'page': 'get_history',
+                        'code': 400,
+                        'message':'Bad Request. Insufficiant parameters.',
+                        'status': 'FAILED'
+                        })
+    username = request.form['username']
+    password = request.form['password']
+
+    user_details = module_get_user(username)
+    if json.loads(user_details.get_data())['status'] == "FAILED":
+        return jsonify({
+            'page': 'toggle_discovery',
+            'code': 400,
+            'status': 'FAILED',
+            'message': 'Error finding user'
+        })
+    else:
+        if password != json.loads(user_details.get_data())['user']['password']:
+            return jsonify({
+                'page': 'toggle_discovery',
+                'code': 500,
+                'status': 'FORBIDDEN',
+                'message': 'Invalid password'
+            })
+
+    ret_user = json.loads(user_details.get_data())['user']
+    return jsonify({
+        'page': 'login',
+        'code': 200,
+        'status': 'SUCCESS',
+        'message': 'User found',
+        'user_details': ret_user
+    })
+
 
 def module_get_user(username):
     users = _db.users
