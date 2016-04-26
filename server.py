@@ -462,7 +462,7 @@ def get_nearby_users(username, password):
             if location2 != "":
                 lat2 = location2.split(' ')[0].strip()
                 long2 = location2.split(' ')[1].strip()
-                import pdb; pdb.set_trace()
+                #import pdb; pdb.set_trace()
             dist = get_distance(lat1,lat2,long1,long2)
             if dist < 100000:
                 user.pop('password')
@@ -711,7 +711,7 @@ def get_distance(latitude1, latitude2, longitude1, longitude2):
     long2 = math.radians(float(longitude2))
     dlat = lat1 - lat2
     dlong = long1 - long2
-    a = (math.sin(dlat/2))**2 + math.cos(long1) * math.cos(long2) * (math.sin(dlong/2))**2
+    a = (math.sin(dlat/2))**2 + math.cos(lat1) * math.cos(lat2) * (math.sin(dlong/2))**2
     c = 2 * math.atan2(a**0.5, (1-a)**0.5)
     d = 3961 * c
     return d
