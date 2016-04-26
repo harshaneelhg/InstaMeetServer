@@ -464,7 +464,7 @@ def get_nearby_users(username, password):
                 long2 = location2.split(' ')[1].strip()
                 #import pdb; pdb.set_trace()
             dist = get_distance(lat1,lat2,long1,long2)
-            if dist < 100000:
+            if dist < 50:
                 user.pop('password')
                 if user['location_sharing'] != "True":
                     user.pop("location")
